@@ -1,41 +1,70 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { BibInput } from "@/components/BibInput";
 import { RunnerInfo } from "@/components/RunnerInfo";
 import { RunnerMap } from "@/components/RunnerMap";
 import { EmptyState } from "@/components/EmptyState";
-import { ErrorState } from "@/components/ErrorState";
 import type { Runner } from "@shared/schema";
+import { X, AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 const RECENT_SEARCHES_KEY = "jtbc-marathon-recent-searches";
+const TRACKED_BIBS_KEY = "jtbc-marathon-tracked-bibs";
 const AUTO_REFRESH_INTERVAL = 30000;
 
 export default function Home() {
-  const [currentBib, setCurrentBib] = useState<string>("");
+  const [trackedBibs, setTrackedBibs] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState<number>(30);
 
   useEffect(() => {
-    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
-    if (stored) {
+    const storedRecent = localStorage.getItem(RECENT_SEARCHES_KEY);
+    if (storedRecent) {
       try {
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(storedRecent);
         setRecentSearches(parsed.slice(0, 3));
       } catch (e) {
         console.error("Failed to parse recent searches:", e);
       }
     }
+
+    const storedTracked = localStorage.getItem(TRACKED_BIBS_KEY);
+    if (storedTracked) {
+      try {
+        const parsed = JSON.parse(storedTracked);
+        setTrackedBibs(parsed);
+      } catch (e) {
+        console.error("Failed to parse tracked bibs:", e);
+      }
+    }
   }, []);
 
-  const { data: runner, isLoading, error, refetch } = useQuery<Runner>({
-    queryKey: ["/api/runner", currentBib],
-    enabled: !!currentBib,
-    refetchInterval: AUTO_REFRESH_INTERVAL,
-    refetchIntervalInBackground: true,
+  const runnerQueries = useQueries({
+    queries: trackedBibs.map((bibNumber) => ({
+      queryKey: ["/api/runner", bibNumber],
+      enabled: !!bibNumber,
+      refetchInterval: AUTO_REFRESH_INTERVAL,
+      refetchIntervalInBackground: true,
+      retry: 1,
+    })),
   });
 
+  const runners = runnerQueries.map((query, index) => ({
+    bib: trackedBibs[index],
+    data: query.data as Runner | undefined,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+  }));
+
+  const validRunners = runners.filter((r) => r.data);
+  const hasValidRunners = validRunners.length > 0;
+  const hasAnyRunners = trackedBibs.length > 0;
+
   useEffect(() => {
-    if (runner && currentBib) {
+    if (hasValidRunners) {
       const interval = setInterval(() => {
         setAutoRefreshCountdown((prev) => {
           if (prev <= 1) {
@@ -47,21 +76,32 @@ export default function Home() {
 
       return () => clearInterval(interval);
     }
-  }, [runner, currentBib]);
+  }, [hasValidRunners]);
 
   useEffect(() => {
-    if (runner && currentBib) {
+    if (hasValidRunners) {
       setAutoRefreshCountdown(30);
     }
-  }, [runner, currentBib]);
+  }, [validRunners.length]);
 
-  const handleSearch = (bibNumber: string) => {
-    setCurrentBib(bibNumber);
-    setAutoRefreshCountdown(30);
+  const handleAddRunner = (bibNumber: string) => {
+    if (trackedBibs.includes(bibNumber)) {
+      return;
+    }
 
-    const updated = [bibNumber, ...recentSearches.filter((b) => b !== bibNumber)].slice(0, 3);
-    setRecentSearches(updated);
-    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    const updated = [...trackedBibs, bibNumber];
+    setTrackedBibs(updated);
+    localStorage.setItem(TRACKED_BIBS_KEY, JSON.stringify(updated));
+
+    const updatedRecent = [bibNumber, ...recentSearches.filter((b) => b !== bibNumber)].slice(0, 3);
+    setRecentSearches(updatedRecent);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updatedRecent));
+  };
+
+  const handleRemoveRunner = (bibNumber: string) => {
+    const updated = trackedBibs.filter((b) => b !== bibNumber);
+    setTrackedBibs(updated);
+    localStorage.setItem(TRACKED_BIBS_KEY, JSON.stringify(updated));
   };
 
   const handleClearRecent = () => {
@@ -69,8 +109,9 @@ export default function Home() {
     localStorage.removeItem(RECENT_SEARCHES_KEY);
   };
 
-  const handleRetry = () => {
-    refetch();
+  const handleClearAll = () => {
+    setTrackedBibs([]);
+    localStorage.removeItem(TRACKED_BIBS_KEY);
   };
 
   return (
@@ -94,29 +135,136 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-6">
             <BibInput
-              onSearch={handleSearch}
-              isLoading={isLoading}
+              onSearch={handleAddRunner}
+              isLoading={false}
               recentSearches={recentSearches}
               onClearRecent={handleClearRecent}
+              buttonText="러너 추가"
             />
 
-            {runner && (
-              <RunnerInfo runner={runner} autoRefreshSeconds={autoRefreshCountdown} />
+            {hasAnyRunners && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    추적 중인 러너 ({trackedBibs.length})
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearAll}
+                    className="h-8 text-xs"
+                    data-testid="button-clear-all"
+                  >
+                    모두 삭제
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {trackedBibs.map((bib) => (
+                    <Badge
+                      key={bib}
+                      variant="outline"
+                      className="px-3 py-1.5 text-sm font-mono gap-2"
+                      data-testid={`badge-tracked-${bib}`}
+                    >
+                      #{bib}
+                      <button
+                        onClick={() => handleRemoveRunner(bib)}
+                        className="hover-elevate active-elevate-2 rounded-full p-0.5"
+                        data-testid={`button-remove-${bib}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             )}
 
-            {!currentBib && <EmptyState />}
+            {hasAnyRunners ? (
+              <div className="space-y-4 max-h-[calc(100vh-24rem)] overflow-y-auto pr-2">
+                {runners.map(({ bib, data, isLoading, error, refetch }) => {
+                  if (isLoading) {
+                    return (
+                      <Card key={bib} className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              배번 #{bib} 로딩 중...
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              러너 정보를 가져오는 중입니다
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  }
 
-            {error && !isLoading && (
-              <ErrorState
-                message="러너 정보를 불러올 수 없습니다. 배번을 확인하고 다시 시도해주세요."
-                onRetry={handleRetry}
-              />
+                  if (error) {
+                    return (
+                      <Card key={bib} className="p-4 border-destructive/50 bg-destructive/5">
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-foreground">
+                                배번 #{bib} 오류
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {error instanceof Error && error.message
+                                  ? error.message
+                                  : "러너 정보를 불러올 수 없습니다"}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveRunner(bib)}
+                              className="hover-elevate active-elevate-2 rounded-full p-1 flex-shrink-0"
+                              data-testid={`button-error-remove-${bib}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => refetch()}
+                              className="flex-1"
+                              data-testid={`button-retry-${bib}`}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                              재시도
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  }
+
+                  if (data) {
+                    return (
+                      <RunnerInfo
+                        key={bib}
+                        runner={data}
+                        autoRefreshSeconds={autoRefreshCountdown}
+                        onRemove={() => handleRemoveRunner(bib)}
+                        isCompact={runners.length > 1}
+                      />
+                    );
+                  }
+
+                  return null;
+                })}
+              </div>
+            ) : (
+              <EmptyState />
             )}
           </div>
 
           <div className="lg:col-span-2">
             <div className="h-[500px] lg:h-[calc(100vh-8rem)] rounded-lg overflow-hidden border border-card-border shadow-md">
-              <RunnerMap runner={runner || null} />
+              <RunnerMap runners={validRunners.map(r => r.data!)} />
             </div>
           </div>
         </div>

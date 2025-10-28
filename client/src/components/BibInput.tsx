@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,22 +9,25 @@ interface BibInputProps {
   isLoading?: boolean;
   recentSearches: string[];
   onClearRecent: () => void;
+  buttonText?: string;
 }
 
-export function BibInput({ onSearch, isLoading, recentSearches, onClearRecent }: BibInputProps) {
+export function BibInput({ onSearch, isLoading, recentSearches, onClearRecent, buttonText = "러너 위치 확인" }: BibInputProps) {
   const [bibNumber, setBibNumber] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (bibNumber.trim()) {
       onSearch(bibNumber.trim());
+      setBibNumber("");
     }
   };
 
   const handleRecentClick = (bib: string) => {
-    setBibNumber(bib);
     onSearch(bib);
   };
+
+  const isAddMode = buttonText.includes("추가");
 
   return (
     <div className="space-y-6">
@@ -72,8 +75,12 @@ export function BibInput({ onSearch, isLoading, recentSearches, onClearRecent }:
             </>
           ) : (
             <>
-              <Search className="h-5 w-5 mr-2" />
-              러너 위치 확인
+              {isAddMode ? (
+                <Plus className="h-5 w-5 mr-2" />
+              ) : (
+                <Search className="h-5 w-5 mr-2" />
+              )}
+              {buttonText}
             </>
           )}
         </Button>

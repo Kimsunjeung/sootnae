@@ -4,13 +4,24 @@ import type { Runner } from "@shared/schema";
 declare const L: any;
 
 interface RunnerMapProps {
-  runner: Runner | null;
+  runners: Runner[];
 }
 
-export function RunnerMap({ runner }: RunnerMapProps) {
+const RUNNER_COLORS = [
+  { bg: "#3b82f6", label: "파랑" },
+  { bg: "#ef4444", label: "빨강" },
+  { bg: "#10b981", label: "초록" },
+  { bg: "#f59e0b", label: "주황" },
+  { bg: "#8b5cf6", label: "보라" },
+  { bg: "#ec4899", label: "분홍" },
+  { bg: "#14b8a6", label: "청록" },
+  { bg: "#f97316", label: "오렌지" },
+];
+
+export function RunnerMap({ runners }: RunnerMapProps) {
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markerRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (!mapContainerRef.current || typeof L === "undefined") return;
@@ -31,7 +42,7 @@ export function RunnerMap({ runner }: RunnerMapProps) {
     }
 
     return () => {
-      if (mapRef.current && !runner) {
+      if (mapRef.current && runners.length === 0) {
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -39,49 +50,71 @@ export function RunnerMap({ runner }: RunnerMapProps) {
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current || !runner?.currentPosition) return;
+    if (!mapRef.current) return;
 
-    const { lat, lng } = runner.currentPosition;
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
 
-    if (markerRef.current) {
-      markerRef.current.remove();
-    }
+    if (runners.length === 0) return;
 
-    const runnerIcon = L.divIcon({
-      className: "custom-runner-marker",
-      html: `
-        <div class="relative">
-          <div class="absolute inset-0 bg-primary rounded-full opacity-30 animate-ping"></div>
-          <div class="relative w-10 h-10 bg-primary rounded-full border-4 border-white shadow-lg flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
-            </svg>
+    const bounds: [number, number][] = [];
+
+    runners.forEach((runner, index) => {
+      if (!runner?.currentPosition) return;
+
+      const { lat, lng } = runner.currentPosition;
+      const color = RUNNER_COLORS[index % RUNNER_COLORS.length];
+
+      const runnerIcon = L.divIcon({
+        className: "custom-runner-marker",
+        html: `
+          <div class="relative">
+            <div class="absolute inset-0 rounded-full opacity-30 animate-ping" style="background-color: ${color.bg}"></div>
+            <div class="relative w-10 h-10 rounded-full border-4 border-white shadow-lg flex items-center justify-center" style="background-color: ${color.bg}">
+              <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+              </svg>
+            </div>
           </div>
-        </div>
-      `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+
+      const marker = L.marker([lat, lng], { icon: runnerIcon })
+        .addTo(mapRef.current)
+        .bindPopup(`
+          <div class="p-2">
+            <p class="font-bold text-sm mb-1">${runner.name}</p>
+            <p class="text-xs text-gray-600">배번: ${runner.bibNumber}</p>
+            ${runner.currentCheckpoint ? `<p class="text-xs text-gray-600 mt-1">${runner.currentCheckpoint}</p>` : ""}
+            <div class="mt-2 flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full" style="background-color: ${color.bg}"></div>
+              <span class="text-xs font-medium" style="color: ${color.bg}">${color.label}</span>
+            </div>
+          </div>
+        `);
+
+      markersRef.current.push(marker);
+      bounds.push([lat, lng]);
     });
 
-    markerRef.current = L.marker([lat, lng], { icon: runnerIcon })
-      .addTo(mapRef.current)
-      .bindPopup(`
-        <div class="p-2">
-          <p class="font-bold text-sm mb-1">${runner.name}</p>
-          <p class="text-xs text-gray-600">배번: ${runner.bibNumber}</p>
-          ${runner.currentCheckpoint ? `<p class="text-xs text-gray-600 mt-1">${runner.currentCheckpoint}</p>` : ""}
-        </div>
-      `);
-
-    mapRef.current.setView([lat, lng], 15, { animate: true });
-
-  }, [runner]);
+    if (bounds.length === 1) {
+      mapRef.current.setView(bounds[0], 15, { animate: true });
+    } else if (bounds.length > 1) {
+      mapRef.current.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: 14,
+        animate: true,
+      });
+    }
+  }, [runners]);
 
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden" data-testid="map-container" />
       
-      {!runner && (
+      {runners.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/50 backdrop-blur-sm rounded-lg">
           <div className="text-center space-y-4 p-8">
             <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
@@ -100,16 +133,31 @@ export function RunnerMap({ runner }: RunnerMapProps) {
         </div>
       )}
 
-      {runner && (
+      {runners.length > 0 && (
         <div className="absolute top-4 right-4 bg-card/95 backdrop-blur-sm px-4 py-3 rounded-md shadow-md border border-card-border">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-primary rounded-full" />
-              <span className="text-xs font-medium text-foreground">러너 위치</span>
-            </div>
+          <div className="space-y-3">
             <div className="text-xs text-muted-foreground">
               <p>Full 코스 (42.195km)</p>
               <p className="font-semibold text-foreground mt-1">2025년 11월 2일</p>
+            </div>
+            <div className="space-y-2 pt-2 border-t border-card-border">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                추적 중인 러너 ({runners.length})
+              </p>
+              {runners.map((runner, index) => {
+                const color = RUNNER_COLORS[index % RUNNER_COLORS.length];
+                return (
+                  <div key={runner.bibNumber} className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full flex-shrink-0" 
+                      style={{ backgroundColor: color.bg }}
+                    />
+                    <span className="text-xs font-medium text-foreground truncate">
+                      {runner.name} (#{runner.bibNumber})
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

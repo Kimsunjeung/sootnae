@@ -44,8 +44,10 @@ Preferred communication style: Simple, everyday language.
 
 **API Design**
 - RESTful API endpoint: `/api/runner/:bibNumber`
-- Web scraping approach using Axios and Cheerio to fetch runner data
-- No database persistence - data fetched on-demand from external source
+- Web scraping approach using Puppeteer (headless browser) for JavaScript-rendered content
+- Cheerio for HTML parsing after page rendering
+- No database persistence - data fetched on-demand from myresult.co.kr
+- Race ID: 133 (2025 JTBC Marathon - November 2, 2025)
 - Response format follows shared schema validation with Zod
 
 **Data Processing**
@@ -58,7 +60,7 @@ Preferred communication style: Simple, everyday language.
 
 **Third-Party Libraries**
 - **Leaflet.js**: Interactive map rendering with OpenStreetMap tiles
-- **Axios**: HTTP client for web scraping race data
+- **Puppeteer**: Headless browser automation for JavaScript-rendered content
 - **Cheerio**: HTML parsing for extracting runner information from source
 - **date-fns**: Date and time manipulation utilities
 
@@ -87,3 +89,19 @@ Preferred communication style: Simple, everyday language.
 - Recent search tracking handled client-side via localStorage
 
 **Note**: While database infrastructure is configured, the current implementation uses web scraping and in-memory storage rather than persistent database operations. The database may be integrated for future features such as caching runner data or storing user preferences.
+
+## Technical Considerations
+
+**Web Scraping Limitations**
+- myresult.co.kr uses Nuxt.js (JavaScript-rendered SPA) requiring Puppeteer headless browser
+- Puppeteer configured with system Chromium (/nix/store/...) for Replit environment compatibility
+- waitForSelector with 10-second timeout for table rendering
+- Parsing logic prepared for 4-column table structure (checkpoint name, time, split, cumulative)
+- Data will be available only when race is active (November 2, 2025, 8:00 AM KST)
+
+**Multi-Runner Tracking**
+- Support for simultaneous tracking of multiple runners with color-coded markers (8 colors)
+- Individual error handling per runner with retry/remove functionality
+- localStorage-based tracking list persistence and restoration
+- Automatic map bounds adjustment for all tracked runners
+- 30-second auto-refresh interval for live updates

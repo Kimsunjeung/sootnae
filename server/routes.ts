@@ -94,18 +94,16 @@ function calculatePace(checkpoints: Array<{ distance: string; time?: string; pas
 async function fetchRunnerData(bibNumber: string): Promise<Runner> {
   let browser;
   try {
-    const url = `https://myresult.co.kr/92/${bibNumber}`;
-    
-    console.log(`Fetching runner data from: ${url}`);
+    // 2025 JTBC Marathon (race #133) - data will be available on race day (Nov 2, 2025)
+    const url = `https://myresult.co.kr/133/${bibNumber}`;
     
     // Find system Chromium path (Replit-specific)
     let chromiumPath = '';
     try {
       const { stdout } = await execAsync('which chromium');
       chromiumPath = stdout.trim();
-      console.log(`Found Chromium at: ${chromiumPath}`);
     } catch (err) {
-      console.error('Could not find system Chromium, will try default');
+      // Will use default Chromium path
     }
     
     // Launch Puppeteer to handle JavaScript rendering
@@ -133,10 +131,9 @@ async function fetchRunnerData(bibNumber: string): Promise<Runner> {
     // Wait for the table to appear (Nuxt app renders asynchronously)
     try {
       await page.waitForSelector('table', { timeout: 10000 });
-      console.log("Table element found, waiting additional 1s for full render");
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
-      console.log("No table found after 10s, proceeding anyway");
+      // Continue even if table not found
     }
     
     // Get the rendered HTML
@@ -145,25 +142,6 @@ async function fetchRunnerData(bibNumber: string): Promise<Runner> {
     browser = undefined;
     
     const $ = cheerio.load(html);
-    
-    console.log("HTML page title:", $("title").text());
-    console.log("HTML body length:", html.length);
-    
-    // Debug: log all h2, h3 text
-    console.log("All h2 elements:", $("h2").map((_, el) => $(el).text().trim()).get());
-    console.log("All h3 elements:", $("h3").map((_, el) => $(el).text().trim()).get());
-    
-    // Debug: log table structure
-    console.log("Number of tables found:", $("table").length);
-    $("table").each((i, table) => {
-      const rows = $(table).find("tr").length;
-      console.log(`Table ${i}: ${rows} rows`);
-      // Log first few rows
-      $(table).find("tr").slice(0, 3).each((j, row) => {
-        const cells = $(row).find("td, th").map((_, cell) => $(cell).text().trim()).get();
-        console.log(`  Row ${j}:`, cells);
-      });
-    });
 
     // Extract runner name - improved parsing
     let name = "";
@@ -189,9 +167,7 @@ async function fetchRunnerData(bibNumber: string): Promise<Runner> {
       });
     }
 
-    if (!name) {
-      console.log("Could not find runner name in standard locations");
-    }
+    // Name will be empty if not found
 
     // Extract category/division - improved parsing
     let category = "";
@@ -206,7 +182,6 @@ async function fetchRunnerData(bibNumber: string): Promise<Runner> {
     });
 
     if (!category) {
-      console.log("Could not find category, using default");
       category = "Full";
     }
 
@@ -268,14 +243,11 @@ async function fetchRunnerData(bibNumber: string): Promise<Runner> {
             
             if (hasTime) {
               foundValidCheckpoints = true;
-              console.log(`Found checkpoint: ${checkpointName} at ${distance} with time ${cumulativeTime}`);
             }
           }
         }
       });
     });
-
-    console.log(`Found ${checkpoints.length} checkpoints, ${foundValidCheckpoints ? 'with' : 'without'} valid timing data`);
 
     // If we didn't find any valid data, throw an error
     if (!foundValidCheckpoints || checkpoints.length === 0) {

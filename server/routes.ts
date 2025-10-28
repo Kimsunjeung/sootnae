@@ -1,8 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import axios from "axios";
 import * as cheerio from "cheerio";
+import puppeteer from "puppeteer";
+import { exec } from "child_process";
+import { promisify } from "util";
 import type { Runner } from "@shared/schema";
+
+const execAsync = promisify(exec);
 
 // Seoul Marathon course approximate coordinates
 const SEOUL_COURSE_CHECKPOINTS = [
@@ -88,106 +92,184 @@ function calculatePace(checkpoints: Array<{ distance: string; time?: string; pas
 }
 
 async function fetchRunnerData(bibNumber: string): Promise<Runner> {
+  let browser;
   try {
-    const url = `https://myresult.co.kr/133/${bibNumber}`;
+    const url = `https://myresult.co.kr/92/${bibNumber}`;
     
     console.log(`Fetching runner data from: ${url}`);
     
-    const response = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-      },
-      timeout: 15000,
-      validateStatus: (status) => status < 500,
+    // Find system Chromium path (Replit-specific)
+    let chromiumPath = '';
+    try {
+      const { stdout } = await execAsync('which chromium');
+      chromiumPath = stdout.trim();
+      console.log(`Found Chromium at: ${chromiumPath}`);
+    } catch (err) {
+      console.error('Could not find system Chromium, will try default');
+    }
+    
+    // Launch Puppeteer to handle JavaScript rendering
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      executablePath: chromiumPath || undefined, // Use system Chromium if found
     });
-
-    if (response.status === 404) {
+    
+    const page = await browser.newPage();
+    
+    // Set user agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    // Navigate to the page
+    const response = await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: 30000,
+    });
+    
+    if (!response || response.status() === 404) {
       throw new Error("해당 배번의 러너 정보를 찾을 수 없습니다");
     }
-
-    const $ = cheerio.load(response.data);
+    
+    // Wait for the table to appear (Nuxt app renders asynchronously)
+    try {
+      await page.waitForSelector('table', { timeout: 10000 });
+      console.log("Table element found, waiting additional 1s for full render");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (err) {
+      console.log("No table found after 10s, proceeding anyway");
+    }
+    
+    // Get the rendered HTML
+    const html = await page.content();
+    await browser.close();
+    browser = undefined;
+    
+    const $ = cheerio.load(html);
     
     console.log("HTML page title:", $("title").text());
-    console.log("HTML body length:", response.data.length);
+    console.log("HTML body length:", html.length);
+    
+    // Debug: log all h2, h3 text
+    console.log("All h2 elements:", $("h2").map((_, el) => $(el).text().trim()).get());
+    console.log("All h3 elements:", $("h3").map((_, el) => $(el).text().trim()).get());
+    
+    // Debug: log table structure
+    console.log("Number of tables found:", $("table").length);
+    $("table").each((i, table) => {
+      const rows = $(table).find("tr").length;
+      console.log(`Table ${i}: ${rows} rows`);
+      // Log first few rows
+      $(table).find("tr").slice(0, 3).each((j, row) => {
+        const cells = $(row).find("td, th").map((_, cell) => $(cell).text().trim()).get();
+        console.log(`  Row ${j}:`, cells);
+      });
+    });
 
-    // Try to extract runner name
+    // Extract runner name - improved parsing
     let name = "";
-    const nameSelectors = [
-      ".runner-name",
-      ".name",
-      "h2.name",
-      ".player-name",
-      ".athlete-name",
-      'td:contains("성명") + td',
-      'td:contains("이름") + td',
-      'th:contains("성명") + td',
-      'th:contains("이름") + td',
-    ];
-
-    for (const selector of nameSelectors) {
-      const text = $(selector).first().text().trim();
-      if (text && text.length >= 2 && text.length <= 10) {
+    
+    // Look for name in specific HTML structure
+    $("h2, h3, .name, .runner-name").each((_, el) => {
+      const text = $(el).text().trim();
+      // Korean name pattern: 2-5 characters
+      if (text && /^[가-힣]{2,5}$/.test(text)) {
         name = text;
-        break;
+        return false; // break
       }
+    });
+
+    if (!name) {
+      // Fallback: look in table cells
+      $("td, th").each((_, el) => {
+        const text = $(el).text().trim();
+        if (text && /^[가-힣]{2,5}$/.test(text) && !text.includes("남자") && !text.includes("여자")) {
+          name = text;
+          return false;
+        }
+      });
     }
 
     if (!name) {
       console.log("Could not find runner name in standard locations");
     }
 
-    // Try to extract category/division
+    // Extract category/division - improved parsing
     let category = "";
-    const categorySelectors = [
-      ".category",
-      ".division",
-      ".course",
-      'td:contains("코스") + td',
-      'td:contains("종목") + td',
-      'th:contains("코스") + td',
-    ];
-
-    for (const selector of categorySelectors) {
-      const text = $(selector).first().text().trim();
-      if (text) {
+    
+    // Look for "Full", "10K", "Half" etc.
+    $("h2, h3, .category, .course").each((_, el) => {
+      const text = $(el).text().trim();
+      if (text && (text === "Full" || text === "10K" || text.includes("풀") || text.includes("하프"))) {
         category = text;
-        break;
+        return false;
       }
+    });
+
+    if (!category) {
+      console.log("Could not find category, using default");
+      category = "Full";
     }
 
-    // Try to extract checkpoints from table
+    // Extract checkpoints from table - improved for 4-column structure
+    // Format: 구간명 | 통과시간 | 구간기록 | 누적기록
     const checkpoints: Runner["checkpoints"] = [];
     let foundValidCheckpoints = false;
 
     $("table").each((_, table) => {
       const $table = $(table);
-      $table.find("tbody tr, tr").each((_, row) => {
+      const rows = $table.find("tbody tr, tr");
+      
+      rows.each((_, row) => {
         const $row = $(row);
         const cells = $row.find("td");
         
-        if (cells.length >= 2) {
-          const col0 = cells.eq(0).text().trim();
-          const col1 = cells.eq(1).text().trim();
-          const col2 = cells.length >= 3 ? cells.eq(2).text().trim() : "";
+        // Skip header rows
+        if ($row.find("th").length > 0) return;
+        
+        // We expect 4 columns: 구간명, 통과시간, 구간기록, 누적기록
+        if (cells.length >= 4) {
+          const checkpointName = cells.eq(0).text().trim(); // 구간명
+          const passedTime = cells.eq(1).text().trim();     // 통과시간 (실제 시계 시간)
+          const lapTime = cells.eq(2).text().trim();        // 구간기록
+          const cumulativeTime = cells.eq(3).text().trim(); // 누적기록
           
           // Check if this looks like a checkpoint row
-          const distMatch = col0.match(/\d+\s*km/i) || col1.match(/\d+\s*km/i);
+          // Valid checkpoint names: "출발", "5K", "10K", "15K", "20K", "하프", "25K", "30K", "35K", "40K", "도착"
+          const isCheckpoint = checkpointName === "출발" || 
+                              checkpointName === "도착" || 
+                              checkpointName.includes("K") || 
+                              checkpointName.includes("하프") ||
+                              checkpointName.match(/\d+\s*km/i);
           
-          if (distMatch) {
-            const checkpointName = col0.includes('km') ? col0 : (col1.includes('km') ? col1 : col0);
-            const distance = distMatch[0];
-            const time = col2 && col2.match(/\d+:\d+:\d+/) ? col2 : undefined;
+          if (isCheckpoint) {
+            // Use cumulative time (누적기록) as the time value
+            // Skip if it's "-" or empty
+            const hasTime = cumulativeTime && cumulativeTime !== "-" && cumulativeTime.match(/\d+:\d+:\d+/);
+            
+            // Convert checkpoint name to distance format
+            let distance = "0km";
+            if (checkpointName.includes("5K") || checkpointName === "5K") distance = "5km";
+            else if (checkpointName.includes("10K") || checkpointName === "10K") distance = "10km";
+            else if (checkpointName.includes("15K") || checkpointName === "15K") distance = "15km";
+            else if (checkpointName.includes("20K") || checkpointName === "20K") distance = "20km";
+            else if (checkpointName.includes("하프") || checkpointName === "하프") distance = "21.0975km";
+            else if (checkpointName.includes("25K") || checkpointName === "25K") distance = "25km";
+            else if (checkpointName.includes("30K") || checkpointName === "30K") distance = "30km";
+            else if (checkpointName.includes("35K") || checkpointName === "35K") distance = "35km";
+            else if (checkpointName.includes("40K") || checkpointName === "40K") distance = "40km";
+            else if (checkpointName === "도착") distance = "42.195km";
             
             checkpoints.push({
               name: checkpointName,
               distance: distance,
-              time: time,
-              passed: !!time,
+              time: hasTime ? cumulativeTime : undefined,
+              passed: !!hasTime,
             });
             
-            if (time) foundValidCheckpoints = true;
+            if (hasTime) {
+              foundValidCheckpoints = true;
+              console.log(`Found checkpoint: ${checkpointName} at ${distance} with time ${cumulativeTime}`);
+            }
           }
         }
       });
@@ -258,21 +340,26 @@ async function fetchRunnerData(bibNumber: string): Promise<Runner> {
   } catch (error) {
     console.error("Error in fetchRunnerData:", error);
     
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        throw new Error("해당 배번의 러너 정보를 찾을 수 없습니다");
-      } else if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+    if (error instanceof Error) {
+      if (error.message.includes("러너") || error.message.includes("파싱") || error.message.includes("찾을 수 없습니다")) {
+        throw error;
+      }
+      
+      if (error.message.includes("timeout") || error.message.includes("TimeoutError")) {
         throw new Error("서버 응답 시간이 초과되었습니다. 다시 시도해주세요.");
-      } else if (error.response?.status && error.response.status >= 500) {
-        throw new Error("myresult.co.kr 서버에 일시적인 문제가 있습니다");
       }
     }
     
-    if (error instanceof Error && error.message.includes("러너") || error instanceof Error && error.message.includes("파싱")) {
-      throw error;
-    }
-    
     throw new Error("러너 정보를 가져올 수 없습니다. 잠시 후 다시 시도해주세요.");
+  } finally {
+    // Ensure browser is closed
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (err) {
+        console.error("Error closing browser:", err);
+      }
+    }
   }
 }
 

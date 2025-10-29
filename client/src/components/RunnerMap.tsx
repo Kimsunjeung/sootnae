@@ -26,18 +26,7 @@ export function RunnerMap({ runners }: RunnerMapProps) {
   const [neLng, setNeLng] = useState<number>(() => Number(localStorage.getItem("overlay_ne_lng")) || 127.1800);
   const [nudge, setNudge] = useState<number>(0.0005);
   const [ready, setReady] = useState(false);
-  // 모바일에서 컨트롤 패널을 접어서 표시
-  const [panelOpen, setPanelOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // sm(640px) 이상에서는 기본 펼침, 모바일에서는 접음
-      setPanelOpen(window.innerWidth >= 640);
-      const onResize = () => setPanelOpen(window.innerWidth >= 640 ? true : panelOpen);
-      window.addEventListener('resize', onResize);
-      return () => window.removeEventListener('resize', onResize);
-    }
-  }, []);
+  // 패널 제거: 모바일에서 단일 토글 스위치만 사용
 
   useEffect(() => {
     const keyId = (import.meta.env as any).VITE_NAVER_MAP_KEY_ID as string | undefined;
@@ -295,44 +284,22 @@ export function RunnerMap({ runners }: RunnerMapProps) {
       )}
 
       {/* 모바일: 옵션 토글 버튼 (우측 상단) */}
-      <div className="absolute bottom-3 right-3 z-[1002] sm:hidden">
-        <button
-          className="px-3 py-1.5 rounded-md bg-card/95 backdrop-blur shadow border text-[11px]"
-          onClick={()=>setPanelOpen(v=>!v)}
-        >
-          {panelOpen ? '옵션 닫기' : '옵션'}
-        </button>
+      {/* 하단 우측: 코스 라인 토글 (모바일/데스크톱 공통) */}
+      <div className="absolute bottom-3 right-3 z-[1002] pointer-events-auto">
+        <label className="flex items-center gap-2 bg-card/95 backdrop-blur px-3 py-2 rounded-md shadow border text-[12px] sm:text-[12px]">
+          <input
+            type="checkbox"
+            checked={showCourseLine}
+            onChange={e=>{ setShowCourseLine(e.target.checked); outlineRef.current?.setMap(e.target.checked?mapRef.current:null); mainlineRef.current?.setMap(e.target.checked?mapRef.current:null); }}
+          />
+          코스 라인 표시
+        </label>
       </div>
 
-      {/* 컨트롤 패널: 코스 라인 온/오프만 제공 (간결한 UI) */}
-      <div
-        className={[
-          "absolute z-[999] bg-card/95 backdrop-blur rounded-md shadow border",
-          "text-[11px] sm:text-xs",
-          // 우상단 타입 컨트롤과 겹치지 않도록 우하단에 배치
-          "bottom-3 right-3 sm:bottom-3 sm:right-3",
-          panelOpen ? "block" : "hidden sm:block",
-          "max-w-[92vw] sm:max-w-[420px]"
-        ].join(' ')}
-      >
-        <div className="px-3 py-2">
-          <label className="flex items-center gap-2 whitespace-nowrap">
-            <input
-              type="checkbox"
-              checked={showCourseLine}
-              onChange={e=>{
-                setShowCourseLine(e.target.checked);
-                outlineRef.current?.setMap(e.target.checked?mapRef.current:null);
-                mainlineRef.current?.setMap(e.target.checked?mapRef.current:null);
-              }}
-            />
-            코스 라인 표시
-          </label>
-        </div>
-      </div>
+      {/* 패널 제거됨: 단일 토글만 사용 */}
 
       {runners.length === 0 && (
-        <div className="absolute bottom-4 left-4 z-[1001] bg-card/90 backdrop-blur px-4 py-3 rounded-md shadow border border-card-border max-w-sm">
+        <div className="absolute bottom-4 left-4 z-[1001] pointer-events-auto bg-card/90 backdrop-blur px-4 py-3 rounded-md shadow border border-card-border max-w-sm">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>

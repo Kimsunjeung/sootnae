@@ -9,6 +9,7 @@ import { X, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 const RECENT_SEARCHES_KEY = "jtbc-marathon-recent-searches";
 const TRACKED_BIBS_KEY = "jtbc-marathon-tracked-bibs";
@@ -18,6 +19,11 @@ export default function Home() {
   const [trackedBibs, setTrackedBibs] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState<number>(30);
+  const { toast } = useToast();
+
+  // JTBC 2025 대회 시간 (KST)
+  const EVENT_DATE_START = new Date("2025-11-02T08:00:00+09:00");
+  const EVENT_DATE_GATE = new Date("2025-11-02T07:30:00+09:00");
 
   useEffect(() => {
     const storedRecent = localStorage.getItem(RECENT_SEARCHES_KEY);
@@ -85,6 +91,20 @@ export default function Home() {
   }, [validRunners.length]);
 
   const handleAddRunner = (bibNumber: string) => {
+    const now = new Date();
+    if (now < EVENT_DATE_GATE) {
+      toast({
+        title: "대회 시작 전",
+        description: "11월 2일 오전 8시 이후에 추적 가능합니다.",
+      });
+      return;
+    } else if (now >= EVENT_DATE_GATE && now < EVENT_DATE_START) {
+      toast({
+        title: "대회 시작 전",
+        description: "시작 전에는 기록이 없을 수 있습니다. 시작 후 자동으로 반영됩니다.",
+      });
+    }
+
     if (trackedBibs.includes(bibNumber)) {
       return;
     }
@@ -132,7 +152,7 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 space-y-6">
             <BibInput
               onSearch={handleAddRunner}
@@ -202,19 +222,30 @@ export default function Home() {
                   }
 
                   if (error) {
+                    const msg = (error instanceof Error ? error.message : "").toString();
+                    const isNoDataYet =
+                      msg.includes("아직 체크포인트") ||
+                      msg.includes("찾을 수 없습니다") ||
+                      msg.includes("404") ||
+                      msg.includes("no data") ||
+                      msg.includes("not found");
+                    const now = new Date();
+                    const beforeStart = now < EVENT_DATE_START;
                     return (
-                      <Card key={bib} className="p-4 border-destructive/50 bg-destructive/5">
+                      <Card key={bib} className={`p-4 ${isNoDataYet || beforeStart ? "bg-muted/30 border-muted" : "border-destructive/50 bg-destructive/5"}`}>
                         <div className="space-y-3">
                           <div className="flex items-start gap-3">
-                            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                            <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${isNoDataYet || beforeStart ? "text-muted-foreground" : "text-destructive"}`} />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-foreground">
-                                배번 #{bib} 오류
+                                {isNoDataYet || beforeStart ? `배번/이름 ${bib}` : `배번 ${bib} 오류`}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {error instanceof Error && error.message
-                                  ? error.message
-                                  : "러너 정보를 불러올 수 없습니다"}
+                                {beforeStart
+                                  ? "대회 시작 전입니다. 11월 2일 오전 8시 이후에 기록이 반영됩니다."
+                                  : isNoDataYet
+                                    ? "아직 기록이 없습니다. 체크포인트 통과 후 데이터가 표시됩니다."
+                                    : (error instanceof Error && error.message) || "러너 정보를 불러올 수 없습니다"}
                               </p>
                             </div>
                             <button
@@ -262,8 +293,8 @@ export default function Home() {
             )}
           </div>
 
-          <div className="lg:col-span-2">
-            <div className="h-[500px] lg:h-[calc(100vh-8rem)] rounded-lg overflow-hidden border border-card-border shadow-md">
+          <div className="lg:col-span-3">
+            <div className="h-[520px] lg:h-[calc(100vh-6rem)] rounded-lg overflow-hidden border border-card-border shadow-md">
               <RunnerMap runners={validRunners.map(r => r.data!)} />
             </div>
           </div>

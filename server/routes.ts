@@ -1,27 +1,17 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { createServer as createHttpServer, type Server as HttpServer } from "http";
+import { createServer as createHttpsServer } from "https";
+import { readFileSync } from "fs";
 import * as cheerio from "cheerio";
 import puppeteer from "puppeteer";
 import { exec } from "child_process";
 import { promisify } from "util";
 import type { Runner } from "@shared/schema";
+import { SEOUL_COURSE_CHECKPOINTS } from "@shared/course";
 
 const execAsync = promisify(exec);
 
-// Seoul Marathon course approximate coordinates
-const SEOUL_COURSE_CHECKPOINTS = [
-  { name: "스타트", distance: "0km", distanceKm: 0, lat: 37.5172, lng: 127.0473 },
-  { name: "5km", distance: "5km", distanceKm: 5, lat: 37.5239, lng: 127.0369 },
-  { name: "10km", distance: "10km", distanceKm: 10, lat: 37.5311, lng: 127.0247 },
-  { name: "15km", distance: "15km", distanceKm: 15, lat: 37.5447, lng: 127.0561 },
-  { name: "20km", distance: "20km", distanceKm: 20, lat: 37.5576, lng: 127.0016 },
-  { name: "하프", distance: "21.0975km", distanceKm: 21.0975, lat: 37.5601, lng: 126.9946 },
-  { name: "25km", distance: "25km", distanceKm: 25, lat: 37.5738, lng: 126.9769 },
-  { name: "30km", distance: "30km", distanceKm: 30, lat: 37.5665, lng: 126.9920 },
-  { name: "35km", distance: "35km", distanceKm: 35, lat: 37.5512, lng: 127.0101 },
-  { name: "40km", distance: "40km", distanceKm: 40, lat: 37.5290, lng: 127.0344 },
-  { name: "피니시", distance: "42.195km", distanceKm: 42.195, lat: 37.5172, lng: 127.0473 },
-];
+// 코스 좌표는 shared/course.ts에서 공용으로 사용합니다.
 
 function parseDistance(distanceStr: string): number | null {
   if (!distanceStr) return null;
@@ -335,24 +325,95 @@ async function fetchRunnerData(bibNumber: string): Promise<Runner> {
   }
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  app.get("/api/runner/:bibNumber", async (req, res) => {
-    try {
-      const { bibNumber } = req.params;
+export async function registerRoutes(app: Express): Promise<HttpServer> {
+  // Proxy JSON API (preferred when configured)
+  async function fetchRunnerDataFromApi(query: string): Promise<Runner> {
+    const base = process.env.MARATHON_API_BASE; // e.g. https://example.com
+    const eventId = process.env.MARATHON_EVENT_ID || "133";
+    if (!base) throw new Error("MARATHON_API_BASE not configured");
 
-      if (!bibNumber || !/^\d+$/.test(bibNumber)) {
-        return res.status(400).json({ 
-          error: "올바른 배번을 입력해주세요 (숫자만 입력 가능)" 
-        });
+    const url = `${base.replace(/\/$/, "")}/api/event/${encodeURIComponent(eventId)}/player?q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Upstream ${res.status}: ${text}`);
+    }
+    const data: any = await res.json();
+
+    const checkpoints: Runner["checkpoints"] = [];
+    const records = Array.isArray(data.records) ? data.records : [];
+    // sort by distance if available, otherwise by time_point
+    records.sort((a: any, b: any) => {
+      const da = parseFloat(a?.point?.distance ?? "0");
+      const db = parseFloat(b?.point?.distance ?? "0");
+      return da - db;
+    });
+
+    for (const r of records) {
+      const name = r?.point?.name ?? "";
+      const dist = r?.point?.distance ? `${r.point.distance}km`.replace(".00km", "km") : "";
+      const time = r?.time_point ?? undefined;
+      const passed = !!time;
+      if (name) checkpoints.push({ name, distance: dist || name, time, passed });
+    }
+
+    // current position from last record with point lat/lng; fallback to course.path last
+    let currentPosition: { lat: number; lng: number } | undefined = undefined;
+    for (let i = records.length - 1; i >= 0; i--) {
+      const p = records[i]?.point;
+      if (p && typeof p.lat === "number" && typeof p.lng === "number") {
+        currentPosition = { lat: p.lat, lng: p.lng };
+        break;
+      }
+    }
+    if (!currentPosition) {
+      const path = data?.course?.path;
+      if (Array.isArray(path) && path.length) {
+        const last = path[path.length - 1];
+        if (last?.lat && last?.lng) currentPosition = { lat: Number(last.lat), lng: Number(last.lng) };
+      }
+    }
+
+    const lastPassed = checkpoints.filter(c => c.passed).slice(-1)[0];
+    const runner: Runner = {
+      bibNumber: String(data?.num ?? data?.tag ?? query),
+      name: String(data?.name ?? ""),
+      category: String(data?.course_cd ?? data?.course?.name ?? "Full"),
+      checkpoints,
+      currentCheckpoint: lastPassed?.name,
+      currentPosition,
+      totalDistance: data?.course?.distance ? `${data.course.distance}km` : undefined,
+      elapsedTime: lastPassed?.time,
+      pace: data?.pace_nettime ?? undefined,
+      estimatedFinish: data?.result_nettime ?? undefined,
+      progressPercentage: checkpoints.length ? (checkpoints.filter(c=>c.passed).length / checkpoints.length) * 100 : undefined,
+    };
+
+    return runner;
+  }
+
+  app.get("/api/runner/:query", async (req, res) => {
+    try {
+      const { query } = req.params as { query: string };
+      if (!query || !String(query).trim()) {
+        return res.status(400).json({ error: "검색어를 입력해주세요" });
       }
 
-      const runner = await fetchRunnerData(bibNumber);
+      let runner: Runner;
+      if (process.env.MARATHON_API_BASE) {
+        runner = await fetchRunnerDataFromApi(query.trim());
+      } else if (/^\d+$/.test(query.trim())) {
+        // fallback: 기존 puppeteer 흐름 (숫자 배번만)
+        runner = await fetchRunnerData(query.trim());
+      } else {
+        return res.status(400).json({ error: "이름 검색을 사용하려면 MARATHON_API_BASE를 설정하세요" });
+      }
       res.json(runner);
 
     } catch (error) {
       console.error("Runner API error:", error);
       
-      const statusCode = error instanceof Error && error.message.includes("찾을 수 없습니다") ? 404 : 500;
+      const statusCode = error instanceof Error && (error.message.includes("찾을 수 없습니다") || error.message.includes("404")) ? 404 : 500;
       
       res.status(statusCode).json({ 
         error: error instanceof Error ? error.message : "서버 오류가 발생했습니다" 
@@ -360,6 +421,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
+  // HTTP/HTTPS 서버 선택적으로 생성
+  try {
+    const useHttps = (process.env.USE_HTTPS || process.env.HTTPS || "false").toLowerCase() === "true";
+    if (useHttps) {
+      const keyPath = process.env.SSL_KEY_PATH || "server.key";
+      const certPath = process.env.SSL_CERT_PATH || "server.cert";
+      const options = {
+        key: readFileSync(keyPath),
+        cert: readFileSync(certPath),
+      } as any;
+      const httpsServer = createHttpsServer(options, app) as unknown as HttpServer;
+      return httpsServer;
+    }
+  } catch (e) {
+    console.error("Failed to initialize HTTPS. Falling back to HTTP.", e);
+  }
+
+  const httpServer = createHttpServer(app);
   return httpServer;
 }

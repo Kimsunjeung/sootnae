@@ -188,6 +188,22 @@
   }
 }
 
+/* Input native UI cleanup (Edge/Chromium, Safari) */
+/* Scoped class to avoid side-effects on other inputs */
+.no-native-clear::-ms-clear,
+.no-native-clear::-ms-reveal { display: none; width: 0; height: 0; }
+.no-native-clear::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.no-native-clear { -webkit-appearance: none; appearance: none; }
+/* 강제 적용: 특정 브라우저에서 좌하단 X(지우기) 아이콘 제거가 남아있을 때 입력 필드 id 기준으로도 제거 */
+#bib-input::-ms-clear,
+#bib-input::-ms-reveal { display: none; width: 0; height: 0; }
+#bib-input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+#bib-input { -webkit-appearance: none; appearance: none; }
+/* Number spinner cleanup (if any number inputs remain elsewhere) */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
 /**
  * Using the elevate system.
  * Automatic contrast adjustment.

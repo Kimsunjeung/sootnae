@@ -34,31 +34,22 @@ export function BibInput({ onSearch, isLoading, recentSearches, onClearRecent, b
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <label htmlFor="bib-input" className="text-sm font-medium text-foreground">
-            배번 입력
+            배번 또는 이름 입력
           </label>
           <div className="relative">
             <Input
               id="bib-input"
               data-testid="input-bib-number"
-              type="number"
-              inputMode="numeric"
-              placeholder="배번 입력 (예: 1234)"
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              placeholder="배번 또는 이름을 입력하세요"
               value={bibNumber}
               onChange={(e) => setBibNumber(e.target.value)}
-              className="h-14 text-2xl pr-12"
+              className="h-14 text-2xl pr-12 no-native-clear"
               disabled={isLoading}
               autoFocus
             />
-            {bibNumber && (
-              <button
-                type="button"
-                onClick={() => setBibNumber("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover-elevate active-elevate-2 p-2 rounded-md"
-                data-testid="button-clear-input"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
           </div>
         </div>
 

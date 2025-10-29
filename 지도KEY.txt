@@ -1,0 +1,603 @@
+마라톤대회 참여한 러너의 카카오맵 상 현재 위치를 추적하는 서비스를 만들어줘.
+위치정보는 myresult.co.kr/133 사이트의 기록조회에 5km마다 통과시간이 찍히
+
+
+
+러너들이 b-tag 칩만 부착을 하고 달리기를 하는데 gps를 켤 수 있는 휴대폰 없이 달리기를 하는데 러너들의 위치를 확인하는데
+myresult.co.kr/132 사이트에서 b-tag칩에 등록된 배번을 확인하면 5km마다 통과 시간이 나오는데 이 정보와 해당 리더기 위치를 사용해서
+러너들의 위치를 확인할 수 있을까? 
+
+
+
+
+카카오맵 JavaScript키
+8421b7baa2f28b06601fcdaf6e16e741
+
+http://localhost:5000/
+
+
+[네이버 클라우드 플랫폼 가입후 어플리케이션 등록] - 2025.10.29
+
+Naver Client ID
+vvei44peu7
+
+Client Secret
+hXEqPASGnTCHzi4gL8BgPICovchm9Z8IpVPGV5Om
+
+
+/api/event/92/player?q=1004
+/api/event/92/player?q=%EB%B0%95%EC%A0%95%EA%B7%9C
+
+=== 배번, 이름 러너 정보 ====
+    {
+        "event_id": 92,
+        "num": "1004",
+        "created_at": "2024-11-02T22:05:59.025Z",
+        "updated_at": null,
+        "course_cd": "Full",
+        "name": "박정규",
+        "tag": 1004,
+        "mobile": "010-8858-2923",
+        "gender": "M",
+        "birthday": null,
+        "result_nettime": "03:42:39.38",
+        "result_guntime": "23:59:37.68",
+        "pace_nettime": "05:16",
+        "pace_guntime": null,
+        "send_player": false,
+        "send_group": false,
+        "team_name": "A",
+        "sector_name": "null",
+        "temp1": "null",
+        "temp2": "null"
+    },
+
+=== 구간기록 리스트 ====
+{
+    "event_id": 92,
+    "num": "1004",
+    "created_at": "2024-11-02T22:05:59.025Z",
+    "updated_at": null,
+    "course_cd": "Full",
+    "name": "박정규",
+    "tag": 1004,
+    "mobile": "010-8858-2923",
+    "gender": "M",
+    "birthday": null,
+    "result_nettime": "03:42:39.38",
+    "result_guntime": "23:59:37.68",
+    "pace_nettime": "05:16",
+    "pace_guntime": null,
+    "send_player": false,
+    "send_group": false,
+    "team_name": "A",
+    "sector_name": "null",
+    "temp1": "null",
+    "temp2": "null",
+    "course": {
+        "event_id": 92,
+        "course_cd": "Full",
+        "created_at": "2024-10-22T06:03:53.030Z",
+        "updated_at": null,
+        "name": "",
+        "distance": "42.195",
+        "guntime": "08:03:00",
+        "explain": "마스터즈 풀코스",
+        "path": [
+            {
+                "lat": 37.56529669813392,
+                "lng": 126.88333511352539
+            },
+            {
+                "lat": 37.565236394284504,
+                "lng": 126.88936269295633
+            },
+            {
+                "lat": 37.565338446005846,
+                "lng": 126.89378297341287
+            },
+            {
+                "lat": 37.565270411540475,
+                "lng": 126.89996278298318
+            },
+            {
+                "lat": 37.56547451475013,
+                "lng": 126.90609967720926
+            },
+            {
+                "lat": 37.5633994393941,
+                "lng": 126.90674340737283
+            },
+            {
+                "lat": 37.561970665385736,
+                "lng": 126.90369641793191
+            },
+            {
+                "lat": 37.56139234430658,
+                "lng": 126.90150773537576
+            },
+            {
+                "lat": 37.5609841149597,
+                "lng": 126.89764535439431
+            },
+            {
+                "lat": 37.56101813415738,
+                "lng": 126.89339673531472
+            },
+            {
+                "lat": 37.56322934868708,
+                "lng": 126.88725984108865
+            }
+        ],
+        "points": [
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P0",
+                "lap": 1,
+                "created_at": "2024-10-22T06:12:35.223Z",
+                "updated_at": null,
+                "name": "출발",
+                "distance": "0.00",
+                "checkpoint": true,
+                "before_record": false,
+                "lat": 33.55662885811765,
+                "lng": 126.81029051542284
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P1",
+                "lap": 1,
+                "created_at": "2024-10-22T06:12:51.349Z",
+                "updated_at": null,
+                "name": "5K",
+                "distance": "5.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 33.55647238173785,
+                "lng": 126.8054357171059
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P4",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:01.578Z",
+                "updated_at": null,
+                "name": "10K",
+                "distance": "10.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 33.56029901166537,
+                "lng": 126.81496024131776
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P5",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:11.343Z",
+                "updated_at": null,
+                "name": "15K",
+                "distance": "15.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 33.53676909579372,
+                "lng": 126.8403071165085
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P6",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:22.090Z",
+                "updated_at": null,
+                "name": "20K",
+                "distance": "20.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56547451475013,
+                "lng": 126.90609967720926
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P7",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:35.275Z",
+                "updated_at": null,
+                "name": "하프",
+                "distance": "21.10",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.5633994393941,
+                "lng": 126.90674340737283
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P8",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:49.901Z",
+                "updated_at": null,
+                "name": "25K",
+                "distance": "25.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.561970665385736,
+                "lng": 126.90369641793191
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P9",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:05.716Z",
+                "updated_at": null,
+                "name": "30K",
+                "distance": "30.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56139234430658,
+                "lng": 126.90150773537576
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P10",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:23.403Z",
+                "updated_at": null,
+                "name": "35K",
+                "distance": "35.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.5609841149597,
+                "lng": 126.89764535439431
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P11",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:34.256Z",
+                "updated_at": null,
+                "name": "40K",
+                "distance": "40.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56101813415738,
+                "lng": 126.89339673531472
+            },
+            {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P12",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:47.245Z",
+                "updated_at": null,
+                "name": "도착",
+                "distance": "42.20",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56322934868708,
+                "lng": 126.88725984108865
+            }
+        ]
+    },
+    "event": {
+        "id": 92,
+        "created_at": "2024-10-22T06:01:37.799Z",
+        "updated_at": null,
+        "name": "2024 JTBC 서울마라톤",
+        "date": "2024-11-03",
+        "time": "08:00:00",
+        "img": "",
+        "place_area": "상암월드컵공원",
+        "place_start": "상암월드컵공원",
+        "place_addr": "대한민국 서울특별시 마포구 월드컵로 243-60",
+        "weather_info": null,
+        "weather_updated_at": null,
+        "url_site": "",
+        "url_naver": "",
+        "url_wiki": "",
+        "visible": true,
+        "memo": "",
+        "tel": "02-3141-6674",
+        "point": {
+            "lat": 37.5637597,
+            "lng": 126.8963774
+        }
+    },
+    "records": [
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P0",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-02T23:03:29.278Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "08:03:22.32",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P0",
+                "lap": 1,
+                "created_at": "2024-10-22T06:12:35.223Z",
+                "updated_at": null,
+                "name": "출발",
+                "distance": "0.00",
+                "checkpoint": true,
+                "before_record": false,
+                "lat": 33.55662885811765,
+                "lng": 126.81029051542284
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P1",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-02T23:30:43.640Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "08:30:38.68",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P1",
+                "lap": 1,
+                "created_at": "2024-10-22T06:12:51.349Z",
+                "updated_at": null,
+                "name": "5K",
+                "distance": "5.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 33.55647238173785,
+                "lng": 126.8054357171059
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P10",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T02:08:38.853Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "11:08:35.26",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P10",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:23.403Z",
+                "updated_at": null,
+                "name": "35K",
+                "distance": "35.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.5609841149597,
+                "lng": 126.89764535439431
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P11",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T02:35:43.230Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "11:35:37",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P11",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:34.256Z",
+                "updated_at": null,
+                "name": "40K",
+                "distance": "40.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56101813415738,
+                "lng": 126.89339673531472
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P12",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T02:46:07.427Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "11:46:01.7",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P12",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:47.245Z",
+                "updated_at": null,
+                "name": "도착",
+                "distance": "42.20",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56322934868708,
+                "lng": 126.88725984108865
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P4",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T00:34:44.319Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "08:57:27.46",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P4",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:01.578Z",
+                "updated_at": null,
+                "name": "10K",
+                "distance": "10.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 33.56029901166537,
+                "lng": 126.81496024131776
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P5",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T00:24:36.660Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "09:24:12.61",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P5",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:11.343Z",
+                "updated_at": null,
+                "name": "15K",
+                "distance": "15.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 33.53676909579372,
+                "lng": 126.8403071165085
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P6",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T00:50:26.157Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "09:50:20.58",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P6",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:22.090Z",
+                "updated_at": null,
+                "name": "20K",
+                "distance": "20.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56547451475013,
+                "lng": 126.90609967720926
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P7",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T00:56:11.101Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "09:56:05.29",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P7",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:35.275Z",
+                "updated_at": null,
+                "name": "하프",
+                "distance": "21.10",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.5633994393941,
+                "lng": 126.90674340737283
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P8",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T01:19:15.360Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "10:16:18.55",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P8",
+                "lap": 1,
+                "created_at": "2024-10-22T06:13:49.901Z",
+                "updated_at": null,
+                "name": "25K",
+                "distance": "25.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.561970665385736,
+                "lng": 126.90369641793191
+            }
+        },
+        {
+            "event_id": 92,
+            "course_cd": "Full",
+            "point_cd": "P9",
+            "lap": 1,
+            "player_num": "1004",
+            "created_at": "2024-11-03T01:42:27.008Z",
+            "updated_at": null,
+            "time_section": null,
+            "time_sum": null,
+            "time_point": "10:42:20.35",
+            "point": {
+                "event_id": 92,
+                "course_cd": "Full",
+                "point_cd": "P9",
+                "lap": 1,
+                "created_at": "2024-10-22T06:14:05.716Z",
+                "updated_at": null,
+                "name": "30K",
+                "distance": "30.00",
+                "checkpoint": true,
+                "before_record": true,
+                "lat": 37.56139234430658,
+                "lng": 126.90150773537576
+            }
+        }
+    ],
+    "rank_course": "3513",
+    "rank_gender": "3263"
+}

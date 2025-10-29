@@ -141,7 +141,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-page-title">
-                JTBC 마라톤 러너 추적
+                SOOTNAE 마라톤 러너 추적
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 2025년 11월 2일 | Full 코스 (42.195km)

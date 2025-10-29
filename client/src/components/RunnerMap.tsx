@@ -26,6 +26,18 @@ export function RunnerMap({ runners }: RunnerMapProps) {
   const [neLng, setNeLng] = useState<number>(() => Number(localStorage.getItem("overlay_ne_lng")) || 127.1800);
   const [nudge, setNudge] = useState<number>(0.0005);
   const [ready, setReady] = useState(false);
+  // 모바일에서 컨트롤 패널을 접어서 표시
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // sm(640px) 이상에서는 기본 펼침, 모바일에서는 접음
+      setPanelOpen(window.innerWidth >= 640);
+      const onResize = () => setPanelOpen(window.innerWidth >= 640 ? true : panelOpen);
+      window.addEventListener('resize', onResize);
+      return () => window.removeEventListener('resize', onResize);
+    }
+  }, []);
 
   useEffect(() => {
     const keyId = (import.meta.env as any).VITE_NAVER_MAP_KEY_ID as string | undefined;
@@ -262,32 +274,54 @@ export function RunnerMap({ runners }: RunnerMapProps) {
         </div>
       )}
 
-      {/* 컨트롤 + 경계 보정 (투명도 슬라이더 제거) - 좌측 줌 컨트롤과 겹치지 않도록 우측 상단으로 이동 */}
-      <div className="absolute top-3 right-3 bg-card/95 backdrop-blur px-3 py-2 rounded-md shadow border text-xs space-y-2">
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1"><input type="checkbox" checked={showOverlay} onChange={e=>setShowOverlay(e.target.checked)} />코스 이미지</label>
-          <label className="flex items-center gap-1"><input type="checkbox" checked={showCourseLine} onChange={e=>{ setShowCourseLine(e.target.checked); outlineRef.current?.setMap(e.target.checked?mapRef.current:null); mainlineRef.current?.setMap(e.target.checked?mapRef.current:null); }} />코스 라인</label>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <div className="font-semibold mb-1">SW</div>
-            <div className="flex items-center gap-2">
-              <button className="px-2 py-1 border rounded" onClick={()=>setSwLat(v=>v- nudge)}>-lat</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setSwLat(v=>v+ nudge)}>+lat</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setSwLng(v=>v- nudge)}>-lng</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setSwLng(v=>v+ nudge)}>+lng</button>
-            </div>
-            <div className="text-[10px] mt-1">{swLat.toFixed(6)}, {swLng.toFixed(6)}</div>
+      {/* 모바일: 옵션 토글 버튼 (우측 상단) */}
+      <div className="absolute top-2 right-2 z-20 sm:hidden">
+        <button
+          className="px-3 py-1.5 rounded-md bg-card/95 backdrop-blur shadow border text-[11px]"
+          onClick={()=>setPanelOpen(v=>!v)}
+        >
+          {panelOpen ? '옵션 닫기' : '옵션'}
+        </button>
+      </div>
+
+      {/* 컨트롤 + 경계 보정 (투명도 슬라이더 제거) */}
+      <div
+        className={[
+          "absolute z-20 bg-card/95 backdrop-blur rounded-md shadow border",
+          "text-[11px] sm:text-xs space-y-2",
+          "top-12 right-2 sm:top-3 sm:right-3", // 모바일에서 네이버 줌/레이블과 간격 확보
+          panelOpen ? "block" : "hidden sm:block",
+          "max-w-[92vw] sm:max-w-[420px]"
+        ].join(' ')}
+      >
+        <div className="px-3 pt-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={showOverlay} onChange={e=>setShowOverlay(e.target.checked)} />코스 이미지</label>
+            <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={showCourseLine} onChange={e=>{ setShowCourseLine(e.target.checked); outlineRef.current?.setMap(e.target.checked?mapRef.current:null); mainlineRef.current?.setMap(e.target.checked?mapRef.current:null); }} />코스 라인</label>
           </div>
-          <div>
-            <div className="font-semibold mb-1">NE</div>
-            <div className="flex items-center gap-2">
-              <button className="px-2 py-1 border rounded" onClick={()=>setNeLat(v=>v- nudge)}>-lat</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setNeLat(v=>v+ nudge)}>+lat</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setNeLng(v=>v- nudge)}>-lng</button>
-              <button className="px-2 py-1 border rounded" onClick={()=>setNeLng(v=>v+ nudge)}>+lng</button>
+        </div>
+        <div className="px-3 pb-2">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+            <div>
+              <div className="font-semibold mb-1">SW</div>
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 overflow-x-auto">
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLat(v=>v- nudge)}>-lat</button>
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLat(v=>v+ nudge)}>+lat</button>
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLng(v=>v- nudge)}>-lng</button>
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLng(v=>v+ nudge)}>+lng</button>
+              </div>
+              <div className="hidden sm:block text-[10px] mt-1">{swLat.toFixed(6)}, {swLng.toFixed(6)}</div>
             </div>
-            <div className="text-[10px] mt-1">{neLat.toFixed(6)}, {neLng.toFixed(6)}</div>
+            <div>
+              <div className="font-semibold mb-1">NE</div>
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 overflow-x-auto">
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLat(v=>v- nudge)}>-lat</button>
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLat(v=>v+ nudge)}>+lat</button>
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLng(v=>v- nudge)}>-lng</button>
+                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLng(v=>v+ nudge)}>+lng</button>
+              </div>
+              <div className="hidden sm:block text-[10px] mt-1">{neLat.toFixed(6)}, {neLng.toFixed(6)}</div>
+            </div>
           </div>
         </div>
       </div>

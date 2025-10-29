@@ -47,7 +47,8 @@ export function RunnerMap({ runners }: RunnerMapProps) {
       const map = new naver.maps.Map(containerRef.current, {
         center: new naver.maps.LatLng(37.5665, 126.9780),
         zoom: 11,
-        zoomControl: true,
+        // 기본 줌 컨트롤(좌측 +/- 바) 제거
+        zoomControl: false,
         mapTypeControl: true,
         // 제스처가 확실히 동작하도록 옵션 명시
         scrollWheel: true,
@@ -77,6 +78,25 @@ export function RunnerMap({ runners }: RunnerMapProps) {
         mapRef.current.setZoom(next, true);
       };
       targetEl?.addEventListener('wheel', onWheel, { passive: false, capture: true });
+
+      // 지도 타입 컨트롤(일반 | 위성) 위치 미세 조정: 컨테이너 꼭대기 라인에 맞춤
+      setTimeout(() => {
+        try {
+          const root = containerRef.current as HTMLElement | null;
+          if (!root) return;
+          const allDivs = Array.from(root.querySelectorAll('div')) as HTMLElement[];
+          const typeBox = allDivs.find(d => /일반|위성/.test((d.textContent || '').replace(/\s+/g, '')));
+          const holder = typeBox?.parentElement as HTMLElement | undefined;
+          if (holder) {
+            holder.style.position = 'absolute';
+            holder.style.top = '6px';
+            holder.style.right = '6px';
+            holder.style.left = 'auto';
+            holder.style.bottom = 'auto';
+            holder.style.zIndex = '998';
+          }
+        } catch {}
+      }, 300);
 
     
     // 기존 shared 경로/체크포인트 표시는 사용하지 않음 (이미지 기반 경로로 대체)
@@ -275,7 +295,7 @@ export function RunnerMap({ runners }: RunnerMapProps) {
       )}
 
       {/* 모바일: 옵션 토글 버튼 (우측 상단) */}
-      <div className="absolute top-2 right-2 z-20 sm:hidden">
+      <div className="absolute bottom-3 right-3 z-[1002] sm:hidden">
         <button
           className="px-3 py-1.5 rounded-md bg-card/95 backdrop-blur shadow border text-[11px]"
           onClick={()=>setPanelOpen(v=>!v)}
@@ -284,50 +304,35 @@ export function RunnerMap({ runners }: RunnerMapProps) {
         </button>
       </div>
 
-      {/* 컨트롤 + 경계 보정 (투명도 슬라이더 제거) */}
+      {/* 컨트롤 패널: 코스 라인 온/오프만 제공 (간결한 UI) */}
       <div
         className={[
-          "absolute z-20 bg-card/95 backdrop-blur rounded-md shadow border",
-          "text-[11px] sm:text-xs space-y-2",
-          "top-12 right-2 sm:top-3 sm:right-3", // 모바일에서 네이버 줌/레이블과 간격 확보
+          "absolute z-[999] bg-card/95 backdrop-blur rounded-md shadow border",
+          "text-[11px] sm:text-xs",
+          // 우상단 타입 컨트롤과 겹치지 않도록 우하단에 배치
+          "bottom-3 right-3 sm:bottom-3 sm:right-3",
           panelOpen ? "block" : "hidden sm:block",
           "max-w-[92vw] sm:max-w-[420px]"
         ].join(' ')}
       >
-        <div className="px-3 pt-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={showOverlay} onChange={e=>setShowOverlay(e.target.checked)} />코스 이미지</label>
-            <label className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={showCourseLine} onChange={e=>{ setShowCourseLine(e.target.checked); outlineRef.current?.setMap(e.target.checked?mapRef.current:null); mainlineRef.current?.setMap(e.target.checked?mapRef.current:null); }} />코스 라인</label>
-          </div>
-        </div>
-        <div className="px-3 pb-2">
-          <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-            <div>
-              <div className="font-semibold mb-1">SW</div>
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 overflow-x-auto">
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLat(v=>v- nudge)}>-lat</button>
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLat(v=>v+ nudge)}>+lat</button>
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLng(v=>v- nudge)}>-lng</button>
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setSwLng(v=>v+ nudge)}>+lng</button>
-              </div>
-              <div className="hidden sm:block text-[10px] mt-1">{swLat.toFixed(6)}, {swLng.toFixed(6)}</div>
-            </div>
-            <div>
-              <div className="font-semibold mb-1">NE</div>
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 overflow-x-auto">
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLat(v=>v- nudge)}>-lat</button>
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLat(v=>v+ nudge)}>+lat</button>
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLng(v=>v- nudge)}>-lng</button>
-                <button className="px-1.5 py-0.5 sm:px-2 sm:py-1 border rounded" onClick={()=>setNeLng(v=>v+ nudge)}>+lng</button>
-              </div>
-              <div className="hidden sm:block text-[10px] mt-1">{neLat.toFixed(6)}, {neLng.toFixed(6)}</div>
-            </div>
-          </div>
+        <div className="px-3 py-2">
+          <label className="flex items-center gap-2 whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={showCourseLine}
+              onChange={e=>{
+                setShowCourseLine(e.target.checked);
+                outlineRef.current?.setMap(e.target.checked?mapRef.current:null);
+                mainlineRef.current?.setMap(e.target.checked?mapRef.current:null);
+              }}
+            />
+            코스 라인 표시
+          </label>
         </div>
       </div>
 
       {runners.length === 0 && (
-        <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur px-4 py-3 rounded-md shadow border border-card-border max-w-sm">
+        <div className="absolute bottom-4 left-4 z-[1001] bg-card/90 backdrop-blur px-4 py-3 rounded-md shadow border border-card-border max-w-sm">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>

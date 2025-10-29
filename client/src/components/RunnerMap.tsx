@@ -305,8 +305,8 @@ export function RunnerMap({ runners }: RunnerMapProps) {
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">배번을 입력하여 시작하세요</h3>
-              <p className="text-xs text-muted-foreground">러너의 배번을 입력하면 지도에서 실시간 위치를 확인할 수 있습니다.</p>
+              <h3 className="text-sm font-semibold text-foreground">배번 또는 이름을 입력하여 시작하세요</h3>
+              <p className="text-xs text-muted-foreground">러너의 위치를 지도에서 실시간 확인할 수 있습니다.</p>
             </div>
           </div>
         </div>

@@ -10,10 +10,10 @@ export function EmptyState() {
         </div>
         <div className="space-y-3">
           <h2 className="text-2xl font-bold text-foreground">
-            러너 추적을 시작하세요
+            숯내 마라토너
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            배번을 입력하면 JTBC 마라톤 대회에서 러너의 실시간 위치와 기록을 확인할 수 있습니다
+            마라톤 대회 참가 숯내 러너의 위치와 기록을 확인할 수 있습니다
           </p>
         </div>
         <div className="pt-4 space-y-2 text-sm text-muted-foreground">
@@ -23,7 +23,7 @@ export function EmptyState() {
           </div>
           <div className="flex items-center justify-center gap-2">
             <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-            <span>2025년 11월 2일 오전 8시 출발</span>
+            <span>2025년 11월 2일 8시 출발</span>
           </div>
         </div>
       </div>
